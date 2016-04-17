@@ -119,7 +119,7 @@ public class NubomediaAppManager {
     }
 
     @RequestMapping(value = "/app/{id}", method =  RequestMethod.GET)
-    public @ResponseBody Application getApp(@RequestHeader("Auth-token") String token, @PathVariable("id") String id) throws ApplicationNotFoundException, UnauthorizedException {
+    public @ResponseBody Application getApp(@RequestHeader("Auth-token") String token, @PathVariable("id") String id) throws ApplicationNotFoundException, UnauthorizedException, SDKException {
 
         logger.info("Request status for " + id + " app");
 
@@ -133,6 +133,16 @@ public class NubomediaAppManager {
 
         Application app = appRepo.findFirstByAppID(id);
         logger.debug("Retrieving status for " + app.toString() + "\nwith status " + app.getStatus());
+
+        List<VirtualNetworkFunctionRecord> vnfr = obmanager.getVnfr(app.getNsrID());
+        logger.debug("Get Vnfr List: " + vnfr);
+
+        List<String> floatingIps = this.getCloudRepoIP(vnfr);
+        logger.debug("MediaServers: " + floatingIps);
+
+        app.setFloatingIps(floatingIps);
+        logger.debug("app details: " + app);
+
 
         switch (app.getStatus()){
             case CREATED:
@@ -193,6 +203,33 @@ public class NubomediaAppManager {
 
         return app;
 
+    }
+
+    private List<String> getCloudRepoIP(List <VirtualNetworkFunctionRecord> nsr) {
+        logger.debug("nsr: " + nsr);
+
+        List<String> ips = new ArrayList<String>();
+
+        for(VirtualNetworkFunctionRecord record : nsr) {
+            logger.debug("records: " + record);
+
+            for (VirtualDeploymentUnit vdu : record.getVdu()) {
+                logger.debug("vdu: " + vdu);
+
+                for (VNFCInstance instance : vdu.getVnfc_instance()) {
+                    logger.debug("instance: " + instance);
+                    for (Ip ip : instance.getFloatingIps()) {
+                        logger.debug("ips: " + ips);
+
+                        if (ip != null) {
+			                ips.add(instance.getHostname() + " : " + ip.getIp());
+                        }
+                    }
+                }
+            }
+        }
+
+        return ips;
     }
 
     @RequestMapping(value = "/app/{id}/buildlogs", method = RequestMethod.GET)

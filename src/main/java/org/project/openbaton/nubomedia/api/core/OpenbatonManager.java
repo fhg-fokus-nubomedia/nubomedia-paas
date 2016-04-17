@@ -6,6 +6,8 @@ import org.openbaton.catalogue.mano.descriptor.NetworkServiceDescriptor;
 import org.openbaton.catalogue.mano.descriptor.VirtualDeploymentUnit;
 import org.openbaton.catalogue.mano.descriptor.VirtualNetworkFunctionDescriptor;
 import org.openbaton.catalogue.mano.record.NetworkServiceRecord;
+import org.openbaton.catalogue.mano.record.VNFCInstance;
+import org.openbaton.catalogue.mano.record.VirtualNetworkFunctionRecord;
 import org.openbaton.catalogue.nfvo.*;
 import org.openbaton.sdk.NFVORequestor;
 import org.openbaton.sdk.api.exception.SDKException;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -121,6 +124,10 @@ public class OpenbatonManager {
 
         logger.debug("Result " + res.toString());
         return res;
+    }
+
+    public List<VirtualNetworkFunctionRecord> getVnfr(String id) throws SDKException {
+        return nfvoRequestor.getNetworkServiceRecordAgent().getVirtualNetworkFunctionRecords(id);
     }
 
     public BuildingStatus getStatus(String nsrID) {
