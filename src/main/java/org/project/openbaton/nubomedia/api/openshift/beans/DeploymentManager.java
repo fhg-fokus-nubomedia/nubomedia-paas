@@ -2,7 +2,7 @@ package org.project.openbaton.nubomedia.api.openshift.beans;
 
 import com.google.gson.Gson;
 import org.project.openbaton.nubomedia.api.messages.BuildingStatus;
-import org.project.openbaton.nubomedia.api.openshift.MessageBuilderFactory;
+import org.project.openbaton.nubomedia.api.openshift.builders.MessageBuilderFactory;
 import org.project.openbaton.nubomedia.api.openshift.exceptions.DuplicatedException;
 import org.project.openbaton.nubomedia.api.openshift.exceptions.UnauthorizedException;
 import org.project.openbaton.nubomedia.api.openshift.json.DeploymentConfig;
@@ -19,6 +19,8 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by maa on 08.10.15.
@@ -153,9 +155,31 @@ public class DeploymentManager {
 
     }
 
-    public String getPodLogs(String kubernetesBaseURL, String namespace, String appName, HttpEntity<String> requestEntity) throws UnauthorizedException {
+    public List<String> getPodNameList(String kubernatesBaseURL, String namespace, String appName, HttpEntity<String> requestEntity) throws UnauthorizedException{
+        String podsURL = kubernatesBaseURL + namespace + podSuffix;
+        Pods podList = this.getPodsList(podsURL,requestEntity);
+        logger.debug("POD LIST is " + podList.toString());
+        List<String> res = new ArrayList<>();
+
+        for (String podName : podList.getPodNames()){
+            logger.debug("Current pod is " + podName);
+            CharSequence sequence = appName + "-dc-1";
+            if(podName.contains(sequence)) {
+                logger.debug("Probably found target " + podName);
+                if (!podName.contains("bc-1-build") || !podName.contains("-deploy")) {
+                    logger.debug("Find compatible pod with name " + podName);
+                    res.add(podName);
+                }
+            }
+        }
+
+        logger.debug("RES is " + res.toString());
+        return res;
+    }
+
+    public String getPodLogs(String kubernetesBaseURL, String namespace, String appName, String podName, HttpEntity<String> requestEntity) throws UnauthorizedException {
         String podsURL = kubernetesBaseURL + namespace + podSuffix;
-        String targetPod = null;
+/*        String targetPod = null;
         Pods podList = this.getPodsList(podsURL,requestEntity);
         logger.debug("POD LIST IS " + podList.toString());
 
@@ -169,9 +193,9 @@ public class DeploymentManager {
                     logger.debug("Target pod is " + targetPod);
                 }
             }
-        }
+        }*/
 
-        String targetUrl = podsURL + targetPod + "/log";
+        String targetUrl = podsURL + podName + "/log";
         ResponseEntity<String> logEntity = null;
         try {
 

@@ -1,5 +1,7 @@
 package org.project.openbaton.nubomedia.api.openbaton;
 
+import java.util.List;
+
 /**
  * Created by maa on 21.10.15.
  */
@@ -10,6 +12,16 @@ public class OpenbatonCreateServer {
     private String eventErrorID;
     private String nsdID;
     private String token;
+
+    public List<String> getFloatingIps() {
+        return floatingIps;
+    }
+
+    public void setFloatingIps(List<String> floatingIps) {
+        this.floatingIps = floatingIps;
+    }
+
+    private List<String> floatingIps;
 
     public OpenbatonCreateServer() {
     }
@@ -62,6 +74,7 @@ public class OpenbatonCreateServer {
                 ", eventErrorID='" + eventErrorID + '\'' +
                 ", nsdID='" + nsdID + '\'' +
                 ", token='" + token + '\'' +
+                ", floatingIps='" + floatingIps + '\'' +
                 '}';
     }
 }

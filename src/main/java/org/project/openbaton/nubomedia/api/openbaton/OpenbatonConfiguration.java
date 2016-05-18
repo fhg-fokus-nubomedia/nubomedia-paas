@@ -3,14 +3,8 @@ package org.project.openbaton.nubomedia.api.openbaton;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.openbaton.catalogue.mano.common.AutoScalePolicy;
-import org.openbaton.catalogue.mano.common.ScalingAlarm;
-import org.openbaton.catalogue.mano.common.VNFDeploymentFlavour;
-import org.openbaton.catalogue.mano.descriptor.InternalVirtualLink;
 import org.openbaton.catalogue.mano.descriptor.NetworkServiceDescriptor;
-import org.openbaton.catalogue.mano.descriptor.VirtualDeploymentUnit;
 import org.openbaton.catalogue.mano.descriptor.VirtualNetworkFunctionDescriptor;
-import org.openbaton.catalogue.nfvo.ConfigurationParameter;
 import org.openbaton.catalogue.nfvo.Location;
 import org.openbaton.catalogue.nfvo.VimInstance;
 import org.project.openbaton.nubomedia.api.configuration.VimProperties;
@@ -23,8 +17,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Created by maa on 13.10.15.
@@ -53,7 +45,6 @@ public class OpenbatonConfiguration {
         location.setLongitude(vimProperties.getLocationLongitude());
         vim.setLocation(location);
         logger.debug("Sending VIM " + vim.toString());
-
         return vim;
     }
 
@@ -61,7 +52,6 @@ public class OpenbatonConfiguration {
     public VirtualNetworkFunctionDescriptor getCloudRepository(){
         VirtualNetworkFunctionDescriptor vnfd = null;
         Gson mapper = new GsonBuilder().create();
-
         try{
             logger.debug("Reading cloud repository");
             FileReader vnfdFile = new FileReader("/etc/nubomedia/cloudrepo-vnfd.json");
@@ -72,16 +62,14 @@ public class OpenbatonConfiguration {
         catch (FileNotFoundException e){
             logger.debug("DO NOT REMOVE OR RENAME THE FILE /etc/nubomedia/cloudrepo-vnfd.json!!!!\nexiting");
         }
-
         return vnfd;
     }
 
     @Bean
-    public NetworkServiceDescriptor networkServiceDescriptor(){
+    public NetworkServiceDescriptor networkServiceDescriptorNubo(){
         logger.debug("Reading descriptor");
         NetworkServiceDescriptor nsd = new NetworkServiceDescriptor();
         Gson mapper = new GsonBuilder().create();
-
         try{
             logger.debug("Trying to read the descriptor");
             FileReader nsdFile = new FileReader("/etc/nubomedia/nubomedia-nsd.json");
@@ -89,8 +77,7 @@ public class OpenbatonConfiguration {
             logger.debug("DESCRIPTOR " + nsd.toString());
         }
         catch (FileNotFoundException e){
-            e.printStackTrace();
-            logger.debug("DO NOT REMOVE OR RENAME THE FILE /etc/nubomedia/nubomedia-nsd.json!!!!\nexiting");
+            logger.error("DO NOT REMOVE OR RENAME THE FILE /etc/nubomedia/nubomedia-nsd.json!!!!\nexiting", e);
         }
         return nsd;
     }
