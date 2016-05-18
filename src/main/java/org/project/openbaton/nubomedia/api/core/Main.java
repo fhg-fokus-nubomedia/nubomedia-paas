@@ -1,9 +1,10 @@
-package org.project.openbaton.nubomedia.api;
+package org.project.openbaton.nubomedia.api.core;
 
 import org.project.openbaton.nubomedia.api.openshift.beans.OpenshiftConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.orm.jpa.EntityScan;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.ContextConfiguration;
@@ -14,14 +15,14 @@ import org.springframework.test.context.ContextConfiguration;
 @SpringBootApplication
 @ContextConfiguration(classes = OpenshiftConfiguration.class)
 @EnableJpaRepositories ("org.project.openbaton.nubomedia.api")
-@EntityScan (basePackages = "org.project.openbaton.nubomedia.api")
-@ComponentScan
+@EntityScan (basePackages = "org.project.openbaton")
+@ComponentScan(basePackages = "org.project.openbaton")
 // /@EnableScheduling
 public class Main {
 
 
     public static void main(String[] args) {
 
-        SpringApplication.run(Main.class,args);
+        ApplicationContext context = SpringApplication.run(Main.class, args);
     }
 }

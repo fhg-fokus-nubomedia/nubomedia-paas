@@ -1,4 +1,4 @@
-package org.project.openbaton.nubomedia.api;
+package org.project.openbaton.nubomedia.api.core;
 
 import org.openbaton.catalogue.mano.common.*;
 import org.openbaton.catalogue.mano.descriptor.InternalVirtualLink;
@@ -6,6 +6,7 @@ import org.openbaton.catalogue.mano.descriptor.NetworkServiceDescriptor;
 import org.openbaton.catalogue.mano.descriptor.VirtualDeploymentUnit;
 import org.openbaton.catalogue.mano.descriptor.VirtualNetworkFunctionDescriptor;
 import org.openbaton.catalogue.mano.record.NetworkServiceRecord;
+import org.openbaton.catalogue.mano.record.VNFCInstance;
 import org.openbaton.catalogue.mano.record.VirtualNetworkFunctionRecord;
 import org.openbaton.catalogue.nfvo.*;
 import org.openbaton.sdk.NFVORequestor;
@@ -20,13 +21,15 @@ import org.project.openbaton.nubomedia.api.openbaton.exceptions.turnServerExcept
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
-import java.math.BigInteger;
-import java.security.SecureRandom;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Created by lto on 24/09/15.
@@ -34,10 +37,18 @@ import java.util.*;
 @Service
 public class OpenbatonManager {
 
-    @Autowired private VimInstance vimInstance;
-    @Autowired private NfvoProperties nfvoProperties;
-    @Autowired private VirtualNetworkFunctionDescriptor cloudRepository;
-    @Autowired private NetworkServiceDescriptor nsdFromFile;
+    @Autowired
+    private VimInstance vimInstance;
+
+    @Autowired
+    private NfvoProperties nfvoProperties;
+
+    @Autowired
+    private VirtualNetworkFunctionDescriptor cloudRepository;
+
+    @Autowired
+    @Qualifier("networkServiceDescriptorNubo")
+    private NetworkServiceDescriptor networkServiceDescriptorNubo;
     private Logger logger;
     private NFVORequestor nfvoRequestor;
     private String apiPath;
@@ -74,7 +85,7 @@ public class OpenbatonManager {
 
         logger.debug("FlavorID " + flavorID + " appID " + appID + " callbackURL " + callbackUrl + " isCloudRepo " + cloudRepositorySet + " QOS " + qos + "turnServerIp " + serverTurnIp + " serverTurnName " + serverTurnUsername + " scaleInOut " + scaleInOut);
 
-        NetworkServiceDescriptor targetNSD = this.configureDescriptor(nsdFromFile,flavorID,qos,turnServerActivate, serverTurnIp,serverTurnUsername,serverTurnPassword,stunServerActivate, stunServerIp, stunServerPort, scaleInOut,scale_out_threshold);
+        NetworkServiceDescriptor targetNSD = this.configureDescriptor(networkServiceDescriptorNubo,flavorID,qos,turnServerActivate, serverTurnIp,serverTurnUsername,serverTurnPassword,stunServerActivate, stunServerIp, stunServerPort, scaleInOut,scale_out_threshold);
 
         if (cloudRepositorySet){
             Set<VirtualNetworkFunctionDescriptor> vnfds = targetNSD.getVnfd();
@@ -113,6 +124,10 @@ public class OpenbatonManager {
 
         logger.debug("Result " + res.toString());
         return res;
+    }
+
+    public List<VirtualNetworkFunctionRecord> getVnfr(String id) throws SDKException {
+        return nfvoRequestor.getNetworkServiceRecordAgent().getVirtualNetworkFunctionRecords(id);
     }
 
     public BuildingStatus getStatus(String nsrID) {

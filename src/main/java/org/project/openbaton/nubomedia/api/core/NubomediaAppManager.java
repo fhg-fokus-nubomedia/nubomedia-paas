@@ -1,12 +1,10 @@
-package org.project.openbaton.nubomedia.api;
+package org.project.openbaton.nubomedia.api.core;
 
 import org.openbaton.catalogue.mano.common.Ip;
 import org.openbaton.catalogue.mano.descriptor.VirtualDeploymentUnit;
 import org.openbaton.catalogue.mano.record.VNFCInstance;
 import org.openbaton.catalogue.mano.record.VirtualNetworkFunctionRecord;
 import org.openbaton.catalogue.nfvo.Action;
-import org.openbaton.catalogue.nfvo.Configuration;
-import org.openbaton.catalogue.nfvo.ConfigurationParameter;
 import org.openbaton.sdk.api.exception.SDKException;
 import org.project.openbaton.nubomedia.api.configuration.PaaSProperties;
 import org.project.openbaton.nubomedia.api.exceptions.ApplicationNotFoundException;
@@ -112,7 +110,7 @@ public class NubomediaAppManager {
 
         deploymentMap.put(appID,openbatonCreateServer);
 
-        Application persistApp = new Application(appID,request.getFlavor(),request.getAppName(),request.getProjectName(),"",openbatonCreateServer.getMediaServerID(), request.getGitURL(), targetPorts, ports, protocols,request.getReplicasNumber(),request.getSecretName(),false);
+        Application persistApp = new Application(appID,request.getFlavor(),request.getAppName(),request.getProjectName(),"",openbatonCreateServer.getMediaServerID(), request.getGitURL(), targetPorts, ports, protocols,null, request.getReplicasNumber(),request.getSecretName(),false);
         appRepo.save(persistApp);
 
         res.setApp(persistApp);
@@ -121,7 +119,7 @@ public class NubomediaAppManager {
     }
 
     @RequestMapping(value = "/app/{id}", method =  RequestMethod.GET)
-    public @ResponseBody Application getApp(@RequestHeader("Auth-token") String token, @PathVariable("id") String id) throws ApplicationNotFoundException, UnauthorizedException {
+    public @ResponseBody Application getApp(@RequestHeader("Auth-token") String token, @PathVariable("id") String id) throws ApplicationNotFoundException, UnauthorizedException, SDKException {
 
         logger.info("Request status for " + id + " app");
 
@@ -135,6 +133,16 @@ public class NubomediaAppManager {
 
         Application app = appRepo.findFirstByAppID(id);
         logger.debug("Retrieving status for " + app.toString() + "\nwith status " + app.getStatus());
+
+        List<VirtualNetworkFunctionRecord> vnfr = obmanager.getVnfr(app.getNsrID());
+        logger.debug("Get Vnfr List: " + vnfr);
+
+        List<String> floatingIps = this.getCloudRepoIP(vnfr);
+        logger.debug("MediaServers: " + floatingIps);
+
+        app.setFloatingIps(floatingIps);
+        logger.debug("app details: " + app);
+
 
         switch (app.getStatus()){
             case CREATED:
@@ -181,6 +189,7 @@ public class NubomediaAppManager {
             case RUNNING:
                 try{
                     app.setStatus(osmanager.getStatus(token, app.getAppName(),app.getProjectName()));
+                    app.setPodList(osmanager.getPodList(token,app.getAppName(),app.getProjectName()));
                 }catch (ResourceAccessException e){
                     app.setStatus(BuildingStatus.PAAS_RESOURCE_MISSING);
                 }
@@ -194,6 +203,33 @@ public class NubomediaAppManager {
 
         return app;
 
+    }
+
+    private List<String> getCloudRepoIP(List <VirtualNetworkFunctionRecord> nsr) {
+        logger.debug("nsr: " + nsr);
+
+        List<String> ips = new ArrayList<String>();
+
+        for(VirtualNetworkFunctionRecord record : nsr) {
+            logger.debug("records: " + record);
+
+            for (VirtualDeploymentUnit vdu : record.getVdu()) {
+                logger.debug("vdu: " + vdu);
+
+                for (VNFCInstance instance : vdu.getVnfc_instance()) {
+                    logger.debug("instance: " + instance);
+                    for (Ip ip : instance.getFloatingIps()) {
+                        logger.debug("ips: " + ips);
+
+                        if (ip != null) {
+			                ips.add(instance.getHostname() + " : " + ip.getIp());
+                        }
+                    }
+                }
+            }
+        }
+
+        return ips;
     }
 
     @RequestMapping(value = "/app/{id}/buildlogs", method = RequestMethod.GET)
@@ -211,48 +247,46 @@ public class NubomediaAppManager {
 
         Application app = appRepo.findFirstByAppID(id);
 
-        if(!app.isResourceOK()){
+        if(app.getStatus().equals(BuildingStatus.FAILED) && !app.isResourceOK()){
 
             res.setId(id);
             res.setAppName(app.getAppName());
             res.setProjectName(app.getProjectName());
             res.setLog("Something wrong on retrieving resources");
 
-        }
-
-        if(app.getStatus().equals(BuildingStatus.CREATED) || app.getStatus().equals(BuildingStatus.INITIALIZING)){
+        } else if(app.getStatus().equals(BuildingStatus.CREATED) || app.getStatus().equals(BuildingStatus.INITIALIZING)){
             res.setId(id);
             res.setAppName(app.getAppName());
             res.setProjectName(app.getProjectName());
             res.setLog("The application is retrieving resources " + app.getStatus());
 
             return res;
-        }
-
-        if (app.getStatus().equals(BuildingStatus.PAAS_RESOURCE_MISSING)){
+        } else if (app.getStatus().equals(BuildingStatus.PAAS_RESOURCE_MISSING)){
             res.setId(id);
             res.setAppName(app.getAppName());
             res.setProjectName(app.getProjectName());
             res.setLog("PaaS components are missing, send an email to the administrator to chekc the PaaS status");
 
             return res;
+        } else {
+
+            res.setId(id);
+            res.setAppName(app.getAppName());
+            res.setProjectName(app.getProjectName());
+            try {
+                res.setLog(osmanager.getBuildLogs(token, app.getAppName(), app.getProjectName()));
+            } catch (ResourceAccessException e) {
+                app.setStatus(BuildingStatus.PAAS_RESOURCE_MISSING);
+                appRepo.save(app);
+                res.setLog("Openshift is not responding, app " + app.getAppName() + " is not anymore available");
+            }
         }
 
-        res.setId(id);
-        res.setAppName(app.getAppName());
-        res.setProjectName(app.getProjectName());
-        try {
-            res.setLog(osmanager.getBuildLogs(token, app.getAppName(), app.getProjectName()));
-        } catch (ResourceAccessException e){
-            app.setStatus(BuildingStatus.PAAS_RESOURCE_MISSING);
-            appRepo.save(app);
-            res.setLog("Openshift is not responding, app "  + app.getAppName() + " is not anymore available");
-        }
         return res;
     }
 
-    @RequestMapping(value = "/app/{id}/logs", method = RequestMethod.GET)
-    public @ResponseBody String getApplicationLogs(@RequestHeader("Auth-token") String token, @PathVariable("id") String id) throws UnauthorizedException, ApplicationNotFoundException {
+    @RequestMapping(value = "/app/{id}/logs/{podName}", method = RequestMethod.GET)
+    public @ResponseBody String getApplicationLogs(@RequestHeader("Auth-token") String token, @PathVariable("id") String id,@PathVariable("podName") String podName) throws UnauthorizedException, ApplicationNotFoundException {
 
         if(token == null){
             throw new UnauthorizedException("no auth-token header");
@@ -268,7 +302,7 @@ public class NubomediaAppManager {
             return "Application Status " + app.getStatus() + ", logs are not available until the status is RUNNING";
         }
 
-        return osmanager.getApplicationLog(token,app.getAppName(),app.getProjectName());
+        return osmanager.getApplicationLog(token,app.getAppName(),app.getProjectName(),podName);
 
     }
 
