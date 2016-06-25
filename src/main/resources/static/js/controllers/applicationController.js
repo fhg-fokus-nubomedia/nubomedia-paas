@@ -65,6 +65,7 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
             'scaleInOut': 0,
             'scale_out_threshold': 0
         };
+        $scope.mediaServers = [];
 
         $scope.createApp = function () {
             $http.get('json/request.json')
@@ -113,6 +114,17 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
 
         };
 
+        function mergeMediaServer(mediaServerGroup) {
+            var mergedServer;
+            for(var i = 0; i < mediaServerGroup.floatingIPs.length; i++) {
+                mergedServer = {
+                    floatingIPs: mediaServerGroup.floatingIPs[i],
+                    hostname: mediaServerGroup.hostnames[i] 
+                };
+                $scope.mediaServers.push(mergedServer);
+            }
+        };
+
         $scope.sendPK = function (privateKeyReq) {
 
             console.log(urlPK + 'secret');
@@ -131,18 +143,22 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
         if (!angular.isUndefined($routeParams.appId)) {
             http.get(marketurl + $routeParams.appId)
                 .success(function (data) {
-                    console.log(data);
+                    console.log('jsonApp 1', data);
                     $scope.application = data;
                     $scope.applicationJSON = JSON.stringify(data, undefined, 4);
+                    mergeMediaServer(data.mediaServerGroup);
+                    $scope.myMediaServer = $scope.mediaServers[0]; // first floatingIps
                 });
         }
         if (!angular.isUndefined($routeParams.applicationId)) {
             http.get(url + $routeParams.applicationId)
                 .success(function (data) {
-                    console.log(data);
+                    console.log('jsonApp 2', data);
                     $scope.application = data;
                     $scope.applicationJSON = JSON.stringify(data, undefined, 4);
                     loadMediaManeger();
+                    mergeMediaServer(data.mediaServerGroup);
+                    $scope.myMediaServer = $scope.mediaServers[0]; // first floatingIps
                 });
         }
         else {
