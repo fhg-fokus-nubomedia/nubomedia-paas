@@ -13,7 +13,6 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-
 <div class="row">
     <div class="col-lg-12">
         <h1>
@@ -25,8 +24,7 @@
                 Overview</a></li>
             <li><a href="#applications"><i class="fa fa-tasks"></i>
                 Applications</a></li>
-            <li class="active"><i class="fa fa-bar-chart-o"></i>
-                {{application.name}}
+            <li class="active"><i class="fa fa-bar-chart-o"></i> {{application.name}}
             </li>
         </ol>
     </div>
@@ -36,8 +34,6 @@
         <alert ng-repeat="alert in alerts" type="alert.type" close="closeAlert($index)">
             <div ng-bind-html="alert.msg"></div>
         </alert>
-
-
         <tabset>
             <tab heading="Info">
                 <div class="row">
@@ -59,37 +55,29 @@
                     </div>
                 </div>
             </tab>
-
             <tab heading="Logs">
                 <br>
                 <div class="row" ng-show="application">
                     <div class="col-lg-12">
                         <div class="col-sm-3">
-
                             <div class="input-group">
                                 <span class="input-group-addon">N. of rows</span>
                                 <input type="number" class="form-control" aria-label="Text input with dropdown button" ng-model="input.numberRows">
                                 <div class="input-group-btn">
-                                    <button ng-disable="checkStatus()" class="btn btn-primary dropdown-toggle"
-                                            type="button"
-                                            id="get_log_app" title="Loads the App logs" data-toggle="dropdown"
-                                            aria-haspopup="true" aria-expanded="true">
+                                    <button ng-disable="checkStatus()" class="btn btn-primary dropdown-toggle" type="button" id="get_log_app" title="Loads the App logs" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                                         App Logs
                                         <span class="caret"></span>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-right" aria-labelledby="get_log_app">
-                                        <li ng-repeat="pod in application.podList"><a href=""
-                                                                                      ng-click="loadAppLog(pod)">{{pod}}</a>
+                                        <li ng-repeat="pod in application.podList"><a href="" ng-click="loadAppLog(pod)">{{pod}}</a>
                                         </li>
                                     </ul>
                                 </div>
                             </div>
-
                         </div>
                         <div class="col-sm-3">
-                        <button id="get_log" class="btn btn-secondary"
-                                title="Loads the build logs" ng-click="loadLog()">Build Log
-                        </button>
+                            <button id="get_log" class="btn btn-secondary" title="Loads the build logs" ng-click="loadLog()">Build Log
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -97,7 +85,6 @@
                 <div class="row" ng-show="log">
                     <div class="col-lg-12">
                         <pre id="log" ng-bind-html="log"></pre>
-
                     </div>
                 </div>
             </tab>
@@ -108,48 +95,71 @@
                         <div class="panel panel-default">
                             <div class="panel-heading">Autoscaling</div>
                             <div class="panel-body">
-
                                 <div class="col-lg-6">
                                     <h4>Number of KMS instances</h4>
                                     <div id="numberFlot"></div>
                                 </div>
-
-
                                 <div class="col-lg-6">
                                     <h4>Total Capacity used</h4>
-
                                     <div id="capacityFlot"></div>
                                 </div>
-
                             </div>
                         </div>
                     </div>
                 </div>
-
             </tab>
-
+            <tab heading="Media Servers">
+                <br>
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="panel panel-default">
+                            <div class="panel-heading">Media server monitoring</div>
+                            <div class="panel-body">
+                                <div class="row">
+                                    <div class="col-lg-12">
+                                        <p>In order to access the Kurento Media Servers you can ssh using their IP addresses and username root with password nub0m3d1@</p>
+                                        <div class="form-group">
+                                            <label>FloatingIPs: </label>
+                                            <select ng-model="myMediaServer" ng-options="mediaServer.floatingIPs for mediaServer in mediaServers"></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Hostname:</label>
+                                            <div id="hostname">{{myMediaServer.hostname}}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-lg-8 col-lg-offset-2">
+                                        <div id="chart_div"></div>
+                                        <p class="buttons-media-server">
+                                            <button type="button" ng-click="removeMediaServerColumn(1)" class="btn btn-default btn-xs">Memory</button>
+                                            <button type="button" ng-click="removeMediaServerColumn(2)" class="btn btn-default btn-xs">Elements</button>
+                                            <button type="button" ng-click="removeMediaServerColumn(3)" class="btn btn-default btn-xs">Pipelines</button>
+                                            <button type="button" ng-click="resetMediaServerColumns()" class="btn btn-danger btn-xs">Reset</button>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </tab>
         </tabset>
-
     </div>
 </div>
-
 <!-- /.wrapper -->
-
-
 <div class="modal" id="jsonInfo" tabindex="" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span
-                        class="sr-only">Close</span></button>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
                 <h4 class="modal-title" id="myModalLabel">JSON of Topology: {{application.name}}</h4>
             </div>
             <div class="modal-body">
                 <pre id="json">{{applicationJSON}}</pre>
             </div>
             <div class="modal-footer">
-                <button type="button" id="closeModal" class="btn btn-default"
-                        data-dismiss="modal">Close
+                <button type="button" id="closeModal" class="btn btn-default" data-dismiss="modal">Close
                 </button>
             </div>
         </div>

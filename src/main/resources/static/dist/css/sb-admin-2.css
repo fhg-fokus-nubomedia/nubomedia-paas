@@ -451,3 +451,8 @@ select.form-control.ng-valid.ng-dirty {
     /*max-width: 100%;*/
     /*height: 400px;*/
 /*}*/
+
+#hostname {
+    display: inline-block;
+    margin-left: 5px;
+}
