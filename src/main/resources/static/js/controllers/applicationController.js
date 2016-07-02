@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-angular.module('app').controller('applicationsCtrl', function($scope, http, $routeParams, serviceAPI, $window, $cookieStore, $http, $sce, $timeout, $location, $rootScope) {
+angular.module('app').controller('applicationsCtrl', function($scope, http, $routeParams, serviceAPI, $window, $cookieStore, $http, $sce, $timeout, $location, $rootScope, $q) {
 
     var ip = $cookieStore.get('URLNb');
     var url = ip + '/api/v1/nubomedia/paas/app/';
@@ -137,6 +137,8 @@ angular.module('app').controller('applicationsCtrl', function($scope, http, $rou
                 $scope.applicationJSON = JSON.stringify(data, undefined, 4);
                 mergeMediaServer(data.mediaServerGroup);
                 $rootScope.myMediaServer = $rootScope.mediaServers[0]; // first floatingIps
+                getDataFromMediaServer($rootScope.myMediaServer.hostname);
+                renderGraphMediaServer();
             });
     }
     if (!angular.isUndefined($routeParams.applicationId)) {
@@ -146,67 +148,137 @@ angular.module('app').controller('applicationsCtrl', function($scope, http, $rou
                 $scope.application = data;
                 $scope.applicationJSON = JSON.stringify(data, undefined, 4);
                 loadMediaManeger();
+                google.charts.load('current', { 'packages': ['corechart'] });
+                google.charts.setOnLoadCallback(drawGraphMediaServer);
                 mergeMediaServer(data.mediaServerGroup);
                 $rootScope.myMediaServer = $rootScope.mediaServers[0]; // first floatingIps
+                getDataFromMediaServer($rootScope.myMediaServer.hostname);
+                renderGraphMediaServer();
             });
     } else {
         loadTable();
     }
 
-    $scope.removeMediaServerColumn = function(indexCol) {
-        //remove indexCol from array with columns, add class active and redraw graph
+    function renderGraphMediaServer() {
+        $timeout(function() {
+            $rootScope.viewMediaServerGraph.setColumns([0, 1, 2, 3]);
+            $rootScope.chartMediaServerGraph.draw($rootScope.viewMediaServerGraph, $rootScope.optionsMediaServerGraph);
+        }, 4000);
     }
 
-    $scope.resetMediaServerColumns = function() {
-        //redraw graph with all columns and remove class active from class .buttons-media-server .btn
+    function getDataFromMediaServer(mediaServer) {
+        console.log('mediaServer: ', mediaServer);
+        var prefixUrl = 'http://80.96.122.69/graphlot/rawdata?from=-1hours&until=-0hour&target=server.';
+        var suffixUrl = '&step=10';
+
+        var apiList = ["memory", "elements", "pipelines"];
+
+        return $q.all(apiList.map(function(item) {
+                if (item === 'memory') {
+                    return $http({
+                        method: 'GET',
+                        url: prefixUrl + mediaServer + '.memory.memory-free' + suffixUrl
+                    });
+                } else {
+                    return $http({
+                        method: 'GET',
+                        url: prefixUrl + mediaServer + '.' + item + suffixUrl
+                    });
+                }
+            }))
+            .then(function(results) {
+                var resultObj = {};
+                results.forEach(function(val, i) {
+                    resultObj[apiList[i]] = val.data;
+                });
+                $rootScope.bigDataMediaServer = zipJsonMediaServer(resultObj.memory, resultObj.elements, resultObj.pipelines);
+
+                $timeout(function() {
+                    $rootScope.bigDataResponse = google.visualization.arrayToDataTable($rootScope.bigDataMediaServer);
+
+                    $rootScope.viewMediaServerGraph = new google.visualization.DataView($rootScope.bigDataResponse);
+                    $rootScope.viewMediaServerGraph.setColumns([0, 1, 2, 3]);
+
+                    $rootScope.chartMediaServerGraph.draw($rootScope.viewMediaServerGraph, $rootScope.optionsMediaServerGraph);
+                }, 3000);
+                return resultObj;
+            });
+
     }
 
-    $rootScope.$watch('myMediaServer', function(newVal, oldVal) {
-        console.log('myMediaServer Watch newVal: ', newVal);
-        console.log('myMediaServer Watch oldVal: ', oldVal);
-        console.log('myMediaServer Watch', $rootScope.myMediaServer);
+    $scope.drawColumnMediaServer = function(nameCol) {
+        //remove indexCol from array with columns, add class active and redraw graph 
+        var allColumns = [0, 1, 2, 3];
+        switch (nameCol) {
+            case 'memory':
+                console.log('memory switch: ', nameCol);
+                var drawColumns = allColumns.splice(1, 1);
+                console.log('drawColumns memory: ', allColumns);
+                //TODO: send drawColumns to draw graph
 
-        // http.get(urlRequestDataMemory)
-        //  .success(function (data) {
-        //      console.log('dattttta',data);
-        //  }).error(function (data, status) {
-        //      if (status === 404)
-        //          showError(status, "The Server is offline");
-        //      else
-        //          showError(status, data);
-        // });
+                $rootScope.viewMediaServerGraph.setColumns([0, 1]);
+                $rootScope.chartMediaServerGraph.draw($rootScope.viewMediaServerGraph, $rootScope.optionsMediaServerGraph);
+                break;
+            case 'elements':
+                console.log('elements switch: ', nameCol);
+                var drawColumns = allColumns.splice(2, 1);
+                console.log('drawColumns elements: ', allColumns);
+                $rootScope.viewMediaServerGraph.setColumns([0, 2]);
+                $rootScope.chartMediaServerGraph.draw($rootScope.viewMediaServerGraph, $rootScope.optionsMediaServerGraph);
+                break;
+            case 'pipelines':
+                console.log('pipelines switch: ', nameCol);
+                var drawColumns = allColumns.splice(3, 1);
+                console.log('drawColumns pipelines: ', allColumns);
+                $rootScope.viewMediaServerGraph.setColumns([0, 3]);
+                $rootScope.chartMediaServerGraph.draw($rootScope.viewMediaServerGraph, $rootScope.optionsMediaServerGraph);
+                break;
+            case 'none':
+                console.log('none switch: ', nameCol);
+                console.log('drawColumns none: ', allColumns);
+                $rootScope.viewMediaServerGraph.setColumns(allColumns);
+                $rootScope.chartMediaServerGraph.draw($rootScope.viewMediaServerGraph, $rootScope.optionsMediaServerGraph);
+                ////TODO: redraw graph with all columns from rootscope
+                break;
+        }
+    }
 
-        //add data from json request
+    $scope.updateGraphMediaServer = function(urlHostnameMediaServer) {
+        console.log('urlHostnameMediaServer', urlHostnameMediaServer);
+
+        //TODO: make all request for all 3 json
+
+        //getDataFromMediaServer(urlHostnameMediaServer);
+
         // $rootScope.bigDataMediaServer = zipJsonMediaServer(dataMemory, dataElements, dataPipelines);
 
-    });
+        //$rootScope.viewMediaServerGraph.setColumns([0, 1, 2, 3]);
+
+        // $rootScope.chartMediaServerGraph.draw($rootScope.viewMediaServerGraph, $rootScope.optionsMediaServerGraph);
+    }
 
     function drawGraphMediaServer() {
         //data for draw graph
         var dataDemo = [
-           ['Time', 'Memory free', 'Elements', 'Pipelines'],
-           ['2013',  1000,      400,      100],
-           ['2014',  1275,      460,      600],
-           ['2015',  660,       1120,     200],
-           ['2016',  1030,      540,      1461]
-         ];
+            ['Time', 'Memory free', 'Elements', 'Pipelines'],
+            ['2013', 1000, 400, 100],
+            ['2016', 1030, 540, 1461]
+        ];
 
-        // var bigDataResponse = google.visualization.arrayToDataTable($rootScope.bigDataMediaServer);
         var bigDataResponse = google.visualization.arrayToDataTable(dataDemo);
 
-        //bigDataResponse aici am acele 4 coloane  
-        var view = new google.visualization.DataView(bigDataResponse);
-        view.setColumns([0, 1, 3]); //aici setezi care sa se vada
+        $rootScope.viewMediaServerGraph = new google.visualization.DataView(bigDataResponse);
+        $rootScope.viewMediaServerGraph.setColumns([0, 1, 2, 3]);
 
-        var options = {
+        $rootScope.optionsMediaServerGraph = {
             title: 'Media Server Monitoring',
             hAxis: { title: 'Time', titleTextStyle: { color: '#333' } },
             vAxis: { minValue: 0 },
-            legend: { position: 'top', textStyle: { fontSize: 14 } }
+            legend: { position: 'right', textStyle: { fontSize: 14 } }
         };
 
-        var chart = new google.visualization.AreaChart(document.getElementById('chart_div'));
-        chart.draw(view, options);
+        $rootScope.chartMediaServerGraph = new google.visualization.AreaChart(document.getElementById('chart_div'));
+        $rootScope.chartMediaServerGraph.draw($rootScope.viewMediaServerGraph, $rootScope.optionsMediaServerGraph);
     };
 
     function estimateTimestamp(dataMemory) {
@@ -265,8 +337,6 @@ angular.module('app').controller('applicationsCtrl', function($scope, http, $rou
             };
             $rootScope.mediaServers.push(mergedServer);
         }
-        google.charts.load('current', { 'packages': ['corechart'] });
-        google.charts.setOnLoadCallback(drawGraphMediaServer);
     };
 
     function loadTable() {
